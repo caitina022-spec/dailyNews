@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+data/*.db
+data/*.db-shm
+data/*.db-wal
+.env
+npm-debug.log*
+.DS_Store
+.playwright-cli
+
+tsconfig.tsbuildinfo

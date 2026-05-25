@@ -1,0 +1,142 @@
+[
+  {
+    "source_name": "少数派",
+    "source_url": "https://sspai.com/feed",
+    "source_type": "rss",
+    "category_hint": "AI 产品商品",
+    "include_keywords": "",
+    "exclude_keywords": "",
+    "quality_score": 3,
+    "enabled": true
+  },
+  {
+    "source_name": "机器之心",
+    "source_url": "https://www.jiqizhixin.com/rss",
+    "source_type": "rss",
+    "category_hint": "AI 服务商动态",
+    "include_keywords": "",
+    "exclude_keywords": "",
+    "quality_score": 3,
+    "enabled": false
+  },
+  {
+    "source_name": "量子位",
+    "source_url": "https://www.qbitai.com/tag/aigc",
+    "source_type": "website",
+    "category_hint": "其他行业热点",
+    "include_keywords": "",
+    "exclude_keywords": "",
+    "quality_score": 3,
+    "enabled": true
+  },
+  {
+    "source_name": "通信世界网",
+    "source_url": "https://www.cww.net.cn/rss.xml",
+    "source_type": "rss",
+    "category_hint": "运营商动态",
+    "include_keywords": "",
+    "exclude_keywords": "",
+    "quality_score": 5,
+    "enabled": false
+  },
+  {
+    "source_name": "C114 滚动资讯",
+    "source_url": "https://www.c114.com.cn/news/roll.asp",
+    "source_type": "website",
+    "category_hint": "其他行业热点",
+    "include_keywords": "",
+    "exclude_keywords": "",
+    "quality_score": 5,
+    "enabled": true
+  },
+  {
+    "source_name": "C114 Cloud&AI",
+    "source_url": "https://www.c114.com.cn/ai/",
+    "source_type": "website",
+    "category_hint": "AI 服务商动态",
+    "include_keywords": "",
+    "exclude_keywords": "",
+    "quality_score": 5,
+    "enabled": true
+  },
+  {
+    "source_name": "C114 运营商",
+    "source_url": "https://www.c114.com.cn/local/",
+    "source_type": "website",
+    "category_hint": "运营商动态",
+    "include_keywords": "",
+    "exclude_keywords": "",
+    "quality_score": 5,
+    "enabled": true
+  },
+  {
+    "source_name": "C114 监管政策",
+    "source_url": "https://www.c114.com.cn/news/550.html",
+    "source_type": "website",
+    "category_hint": "全球宏观热点",
+    "include_keywords": "",
+    "exclude_keywords": "",
+    "quality_score": 5,
+    "enabled": true
+  },
+  {
+    "source_name": "C114 设备商",
+    "source_url": "https://www.c114.com.cn/news/18.html",
+    "source_type": "website",
+    "category_hint": "CT 设备商动态",
+    "include_keywords": "",
+    "exclude_keywords": "",
+    "quality_score": 5,
+    "enabled": true
+  },
+  {
+    "source_name": "C114 IT资讯",
+    "source_url": "https://www.c114.com.cn/news/27.html",
+    "source_type": "website",
+    "category_hint": "IT 设备商动态",
+    "include_keywords": "",
+    "exclude_keywords": "",
+    "quality_score": 5,
+    "enabled": true
+  },
+  {
+    "source_name": "新华网",
+    "source_url": "https://www.news.cn/world/",
+    "source_type": "website",
+    "category_hint": "全球宏观热点",
+    "include_keywords": "",
+    "exclude_keywords": "",
+    "quality_score": 4,
+    "enabled": true
+  },
+  {
+    "source_name": "集微网",
+    "source_url": "https://www.laoyaoba.com/",
+    "source_type": "website",
+    "category_hint": "IT 设备商动态",
+    "include_keywords": "",
+    "exclude_keywords": "",
+    "quality_score": 4,
+    "enabled": true
+  },
+  {
+    "source_name": "芯东西",
+    "source_url": "https://zhidx.com/aichip001",
+    "source_type": "website",
+    "category_hint": "IT 设备商动态",
+    "include_keywords": "",
+    "exclude_keywords": "",
+    "quality_score": 4,
+    "enabled": true
+  },
+  {
+    "source_name": "新浪",
+    "source_url": "https://tech.sina.com.cn/",
+    "source_type": "website",
+    "category_hint": "舆情和负面信息",
+    "include_keywords": "AI,人工智能,大模型,通信,运营商,电信,华为,芯片,半导体,算力,服务器,5G,6G,云,数据中心,机器人,智能眼镜,AI手机,Copilot,OpenAI,Anthropic,DeepSeek,Kimi,苹果,小米,三星",
+    "exclude_keywords": "汽车,茶,饮料,影视,短剧,股市,证券报,操盘,直播间,李佳琦,奔驰,发动机,维修,水贝夜校,寿司,餐饮,好莱坞,球赛,明星,电影,电视剧",
+    "quality_score": 2,
+    "enabled": true
+  }
+]
