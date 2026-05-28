@@ -25,9 +25,9 @@ const categoryRules: CategoryRule[] = [
   },
   {
     category: "CT 设备商动态",
-    strong: ["5G-A", "Open RAN", "AI-RAN", "核心网", "光通信", "光模块", "运营商网络升级"],
-    vendors: ["爱立信", "Ericsson", "Nokia", "诺基亚", "思科", "Cisco", "Ciena", "Infinera", "华三", "H3C", "华为", "中兴", "烽火通信"],
-    keywords: ["通信设备", "无线网络", "核心网", "传输网", "光网络", "光通信", "路由器", "交换机", "专网"],
+    strong: ["5G-A", "5G+", "Open RAN", "AI-RAN", "核心网", "光通信", "光模块", "运营商网络升级"],
+    vendors: ["爱立信", "Ericsson", "Nokia", "诺基亚", "思科", "Cisco", "Ciena", "Infinera", "华三", "H3C", "华为", "中兴", "中信科", "信科移动", "烽火通信"],
+    keywords: ["通信设备", "无线网络", "核心网", "传输网", "光网络", "光通信", "路由器", "交换机", "专网", "智慧教育"],
     semantic: ["网络自动化", "运营商网络", "网络升级", "无线接入网", "RedCap", "卫星通信", "物联网", "网络设备"]
   },
   {
@@ -39,17 +39,17 @@ const categoryRules: CategoryRule[] = [
   },
   {
     category: "AI 产品商品",
-    strong: ["AI眼镜", "智能眼镜", "XR眼镜", "AR眼镜", "AI玩具", "AI手机", "人形机器人", "具身智能", "AI终端", "端侧AI"],
+    strong: ["AI眼镜", "智能眼镜", "XR眼镜", "AR眼镜", "AI玩具", "AI手机", "AI 手机", "人形机器人", "具身智能", "AI终端", "AI 终端", "端侧AI"],
     vendors: ["阿里夸克", "夸克", "Rokid", "VITURE", "Meta", "Google", "字节跳动", "豆包手机", "华为", "百度", "小米", "珞博智能", "京东", "科大讯飞", "三星", "苹果", "vivo", "OPPO", "Figure AI", "智元机器人", "AGIBOT"],
     keywords: ["穿戴类新产品", "AI硬件", "XR智能眼镜", "AR智能眼镜", "XR设备", "AR设备", "AI耳机", "AI PC", "机器人", "智能座舱", "消费级AI产品"],
     semantic: ["终端侧大模型", "端侧AI能力", "智能硬件", "AI穿戴", "AI消费电子", "AI座舱", "空间计算"]
   },
   {
     category: "AI 服务商动态",
-    strong: ["大模型", "智能体", "Agent", "OpenAI", "Anthropic", "DeepSeek", "通义千问", "腾讯混元", "百度文心", "Kimi", "豆包"],
+    strong: ["大模型", "智能体", "Agent", "OpenAI", "Anthropic", "DeepSeek", "通义千问", "腾讯混元", "百度文心", "Kimi", "豆包", "AI投资", "AI投入", "AI战略"],
     vendors: ["OpenAI", "Google Gemini", "Gemini", "Anthropic", "Grok", "Llama", "DeepSeek", "阿里通义千问", "通义千问", "腾讯混元", "混元", "百度文心", "文心", "月之暗面", "Kimi", "字节豆包", "豆包", "智谱", "电信星辰", "星辰", "移动九天", "九天", "联通元景", "元景"],
-    keywords: ["模型发布", "模型升级", "API", "模型价格", "模型评测", "企业级AI服务", "AI助手", "模型生态"],
-    semantic: ["云上模型服务", "模型能力评测", "模型生态合作", "Agent 产品", "AI搜索", "AI办公", "AI云服务"]
+    keywords: ["模型发布", "模型升级", "API", "模型价格", "模型评测", "企业级AI服务", "AI助手", "模型生态", "AI投资", "AI投入", "AI战略"],
+    semantic: ["云上模型服务", "模型能力评测", "模型生态合作", "Agent 产品", "AI搜索", "AI办公", "AI云服务", "AI能力建设", "AI资本开支"]
   },
   {
     category: "全球宏观热点",
@@ -149,9 +149,10 @@ function scoreCategories(text: string, hint?: string) {
     const vendorHits = hits(rule.vendors, lower);
     const keywordHits = hits(rule.keywords, lower);
     const semanticHits = hits(rule.semantic, lower);
+    const productVendorScore = rule.category === "AI 产品商品" && !strong.length && !keywordHits.length && !semanticHits.length ? 0 : vendorHits.length * 4;
     return {
       category: rule.category,
-      score: strong.length * 5 + vendorHits.length * 4 + keywordHits.length * 2 + semanticHits.length * 3,
+      score: strong.length * 5 + productVendorScore + keywordHits.length * 2 + semanticHits.length * 3,
       matches: unique([...strong, ...vendorHits, ...keywordHits, ...semanticHits])
     };
   });

@@ -245,7 +245,7 @@ function judgement(item: NewsItem) {
     return `${context.owner}动态，落点在${context.track}；建议判断其对政企、家庭或云网业务的拉动方式，并补充是否存在华为可切入的方案环节。`;
   }
   if (item.is_huawei_related) {
-    return `华为在${context.track}方向释放新的方案或生态信号，可用于对照中国电信相关业务场景，筛选可包装成联合方案或客户案例的切入点。`;
+    return `华为在${context.track}方向释放新的方案或生态信号，可用于对照中国电信业务场景，筛选可包装成联合方案或客户案例的切入点。`;
   }
   if (context.track === "AI终端与用户入口") return `AI硬件正在从单一终端走向个人智能入口，需关注其是否改变用户触点、数据入口和家庭/个人AI服务形态。`;
   if (context.track === "模型工具链与开发者生态") return `模型工具链变化会影响AI应用开发效率和生态绑定能力，运营商自有AI平台需关注开发者体验、API兼容和企业交付门槛。`;
@@ -269,7 +269,7 @@ function classifyContext(item: NewsItem) {
   const text = `${item.title} ${item.summary} ${item.event} ${item.vendors} ${item.keywords}`;
   return {
     owner: ownerLabel(text),
-    track: trackLabel(text)
+    track: trackLabel(text, item.category)
   };
 }
 
@@ -282,10 +282,10 @@ function ownerLabel(text: string) {
   if (/中国联通|联通/.test(text)) return "中国联通";
   if (/中国广电|广电/.test(text)) return "中国广电";
   if (/华为/.test(text)) return "华为";
-  return "相关主体";
+  return "该主体";
 }
 
-function trackLabel(text: string) {
+function trackLabel(text: string, category?: string) {
   if (/Anthropic|OpenAI|Gemini|DeepSeek|通义|混元|文心|Kimi|豆包|智谱|SDK|API|开发者|工具链/.test(text)) return "模型工具链与开发者生态";
   if (/Agent.*硬件|硬件.*Agent|YoooClaw|终端|手机|眼镜|机器人|耳机|AI PC|穿戴|具身/.test(text)) return "AI终端与用户入口";
   if (/5G-A|5GA|5G\s?A|RedCap|上行|超级上行|网络体验|体验分级|速率分级/.test(text)) return "5G-A体验经营和网络能力开放";
@@ -298,7 +298,7 @@ function trackLabel(text: string) {
   if (/制造|精密|产业链|供应链|工控|嵌入式|主板|物联网|IOTE|模组/.test(text)) return "产业链、工业硬件与物联网";
   if (/政企|行业|园区|制造|医疗|教育|金融|交通|低空/.test(text)) return "政企行业数字化";
   if (/关税|制裁|供应链|利率|通胀|政策|监管|营商/.test(text)) return "政策环境与产业链";
-  return "相关业务";
+  return category ? categoryLabel(category) : "行业动态";
 }
 
 function hasCompetitorSignal(item: NewsItem) {
@@ -318,7 +318,7 @@ async function summarizeOriginalArticle(item: NewsItem) {
   try {
     const articleText = await fetchArticleText(item.url);
     if (!articleText) return "";
-    return summarizeArticleText(articleText, item);
+    return await tryOpenAiDailySummary(articleText, item) || summarizeArticleText(articleText, item);
   } catch {
     return "";
   }
@@ -352,26 +352,56 @@ async function fetchArticleText(url: string) {
 }
 
 function extractArticleText(html: string) {
-  const scoped =
-    pickFirstMatch(html, [
+  const scopeCandidates = [
+    ...pickMatches(html, [
       /<div[^>]*id=["']artibody["'][^>]*>([\s\S]*?)<\/div>/i,
       /<div[^>]+id=["'][^"']*(?:artibody|article|content|mainContent)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i,
       /<article[^>]*>([\s\S]*?)<\/article>/i,
       /<div[^>]+class=["'][^"']*(?:article-content|article_content|article-body|article_body|news_content|main_content|TRS_Editor|text)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i
-    ]) || html;
+    ]),
+    html
+  ];
+  const scoped = scopeCandidates
+    .map((candidate) => ({ candidate, count: countUsefulParagraphs(candidate) }))
+    .sort((a, b) => b.count - a.count)[0]?.candidate || html;
   const paragraphs = Array.from(scoped.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi))
     .map((match) => stripHtmlForArticle(match[1]))
     .filter(isUsefulArticleParagraph);
-  const lines = paragraphs.length ? paragraphs : stripHtmlForArticle(scoped).split(/[。！？!?]\s*/).map((line) => line.trim()).filter(isUsefulArticleParagraph);
-  return lines.slice(0, 12).join("。");
+  const lines = paragraphs.length
+    ? paragraphs
+    : stripHtmlForArticle(scoped)
+      .split(/[。！？!?]\s*/)
+      .map((line) => line.trim())
+      .filter(isUsefulArticleParagraph);
+  return dedupeArticleParagraphs(lines).slice(0, 40).join("。");
 }
 
-function pickFirstMatch(value: string, patterns: RegExp[]) {
+function dedupeArticleParagraphs(lines: string[]) {
+  const seen = new Set<string>();
+  return lines.filter((line) => {
+    const normalized = line.replace(/[，。、“”‘’：:；;！!？?（）()\[\]【】《》\s-]/g, "");
+    if (!normalized || seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  });
+}
+
+function pickMatches(value: string, patterns: RegExp[]) {
+  const matches: string[] = [];
   for (const pattern of patterns) {
-    const match = value.match(pattern);
-    if (match?.[1]) return match[1];
+    const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+    for (const match of value.matchAll(new RegExp(pattern.source, flags))) {
+      if (match[1]) matches.push(match[1]);
+    }
   }
-  return "";
+  return matches;
+}
+
+function countUsefulParagraphs(html: string) {
+  return Array.from(html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi))
+    .map((match) => stripHtmlForArticle(match[1]))
+    .filter(isUsefulArticleParagraph)
+    .length;
 }
 
 function stripHtmlForArticle(value: string) {
@@ -380,6 +410,8 @@ function stripHtmlForArticle(value: string) {
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<[^>]+>/g, "")
     .replace(/&nbsp;/g, " ")
+    .replace(/&emsp;|&#8195;/g, " ")
+    .replace(/&ensp;|&#8194;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&ldquo;|&#8220;/g, "“")
     .replace(/&rdquo;|&#8221;/g, "”")
@@ -397,20 +429,64 @@ function stripHtmlForArticle(value: string) {
 
 function isUsefulArticleParagraph(value: string) {
   if (value.length < 18) return false;
-  if (/责任编辑|版权所有|公众号|扫码|微信|广告|上一篇|下一篇|相关阅读|C114讯|飞象网讯|本文结束|正文\s*$/.test(value)) return false;
+  if (/责任编辑|版权所有|公众号|扫码|微信|广告|上一篇|下一篇|相关阅读|C114讯|飞象网讯|本文结束|正文\s*$|免责声明|转载|来源：|编辑：/.test(value)) return false;
   if (/>/.test(value) && /正文|首页|新闻|科技|财经|科学探索/.test(value)) return false;
   return /[\u4e00-\u9fa5]/.test(value);
+}
+
+async function tryOpenAiDailySummary(articleText: string, item: NewsItem) {
+  if (!process.env.OPENAI_API_KEY) return "";
+  try {
+    const { default: OpenAI } = await import("openai");
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const completion = await client.chat.completions.create({
+      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      temperature: 0.2,
+      messages: [
+        {
+          role: "system",
+          content: "你是华为中国电信系统部的新闻日报编辑。请根据原文写一句中文概括，像人工编辑，不要套话，不要写“主体为/场景为/相关主体/相关业务”，不要写建议。"
+        },
+        {
+          role: "user",
+          content: JSON.stringify({
+            title: item.title,
+            category: categoryLabel(item.category),
+            source: item.source,
+            article: articleText.slice(0, 6000),
+            requirement: "只输出一句 45-90 字概括：说明新闻发生了什么、关键变化或影响；信息不足时也要基于原文可确认事实表达。"
+          })
+        }
+      ]
+    });
+    const summary = completion.choices[0]?.message?.content || "";
+    return cleanGeneratedSummary(summary, item.title);
+  } catch {
+    return "";
+  }
+}
+
+function cleanGeneratedSummary(value: string, title: string) {
+  const clean = value
+    .replace(/^概括[：:]\s*/, "")
+    .replace(/^["“]|["”]$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!clean || isLowValueSynopsis(clean, title)) return "";
+  if (/主体为|场景为|相关主体|相关业务/.test(clean)) return "";
+  return ensureSentenceEnd(clean);
 }
 
 function summarizeArticleText(text: string, item: NewsItem) {
   const sentences = splitChineseSentences(text)
     .filter((sentence) => !sentence.includes(item.title))
     .filter((sentence) => !isTitleLikeSentence(sentence, item.title))
+    .filter(isUsefulSummarySentence)
     .map(compactArticleSentence)
     .filter((sentence) => sentence.length >= 16 && sentence.length <= 140);
-  const picked = pickSummarySentences(sentences, item).slice(0, 2);
+  const picked = pickSummarySentences(sentences, item).slice(0, 1);
   if (!picked.length) return "";
-  return picked.map(ensureSentenceEnd).join("");
+  return picked.map(cleanSummarySentence).filter(Boolean).map(ensureSentenceEnd).join("");
 }
 
 function splitChineseSentences(text: string) {
@@ -431,7 +507,10 @@ function pickSummarySentences(sentences: string[], item: NewsItem) {
   return [...sentences]
     .map((sentence, index) => ({
       sentence,
-      score: terms.reduce((sum, term) => sum + (sentence.includes(term) ? 2 : 0), 0) + (index < 4 ? 2 : 0) + (/表示|宣布|发布|完成|中标|启动|建设|合作|规模|首次|将/.test(sentence) ? 2 : 0)
+      score: terms.reduce((sum, term) => sum + (sentence.includes(term) ? 2 : 0), 0)
+        + (index < 8 ? 1 : 0)
+        + (/表示|宣布|发布|完成|中标|启动|建设|合作|规模|首次|将|认为|指出|显示|预计|计划|上线|下线|开源|入围|发布会/.test(sentence) ? 3 : 0)
+        + (/关键|核心|主要|重点|增长|下降|突破|影响|需求|市场|能力|模型|算力|网络|中国电信|华为/.test(sentence) ? 2 : 0)
     }))
     .sort((a, b) => b.score - a.score)
     .map((item) => item.sentence);
@@ -439,15 +518,32 @@ function pickSummarySentences(sentences: string[], item: NewsItem) {
 
 function compactArticleSentence(sentence: string) {
   const clean = sentence.replace(/\s+/g, " ").trim();
-  if (clean.length <= 120) return clean;
+  if (clean.length <= 96) return clean;
   const clauses = clean.split(/(?<=[，；、,;])\s*/);
   let output = "";
   for (const clause of clauses) {
     if (!clause) continue;
-    if ((output + clause).length > 118) break;
+    if ((output + clause).length > 92) break;
     output += clause;
   }
-  return output || `${clean.slice(0, 118)}…`;
+  return output || `${clean.slice(0, 92)}…`;
+}
+
+function isUsefulSummarySentence(sentence: string) {
+  const clean = sentence.replace(/\s+/g, " ").trim();
+  if (/[？?]$/.test(clean)) return false;
+  if (/^(问|对话人|记者|作者|主作者|联合作者|相关阅读|更多|免责声明|责任编辑|编辑)[：:]/.test(clean)) return false;
+  if (/关注|少数派作者|利益相关|成功发布|成为正式作者|登录|注册|评论|收藏|分享|阅读全文|扫码|微信公众号/.test(clean)) return false;
+  if (/本报记者近日对话|如何看待|怎么看|为何能够|怎样的启示/.test(clean)) return false;
+  return true;
+}
+
+function cleanSummarySentence(value: string) {
+  return value
+    .replace(/^(新浪科技讯|财联社|证券时报|新华社|央视新闻|中新网|C114讯)[，,]?\s*/, "")
+    .replace(/^\d+\s*月\s*\d+\s*日[上下]午消息[，,]\s*/, "")
+    .replace(/^消息[，,]\s*/, "")
+    .trim();
 }
 
 function isTitleLikeSentence(sentence: string, title: string) {
@@ -460,7 +556,6 @@ function isTitleLikeSentence(sentence: string, title: string) {
 function newsSynopsis(item: NewsItem, articleSummaries: Map<number, string>) {
   const articleSummary = articleSummaries.get(item.id);
   if (articleSummary) return articleSummary;
-  const context = classifyContext(item);
   const candidates = [item.summary, item.event]
     .map(cleanSentence)
     .filter((value) => value && !isLowValueSynopsis(value, item.title))
@@ -471,8 +566,9 @@ function newsSynopsis(item: NewsItem, articleSummaries: Map<number, string>) {
     unique.push(candidate);
     if (unique.length >= 2) break;
   }
-  if (!unique.length) unique.push(`当前可确认：${item.title}`);
-  if (unique.length < 2) unique.push(`主体为${context.owner}，场景为${context.track}`);
+  if (!unique.length) {
+    return `原文摘要不足，建议打开原文补充事件背景、影响范围和与${categoryLabel(item.category)}的关联。`;
+  }
   return unique.map(ensureSentenceEnd).join("");
 }
 

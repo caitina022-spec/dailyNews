@@ -167,13 +167,12 @@ export default function DailyPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <input type="date" className="tech-input" value={date} onChange={(e) => setDate(e.target.value)} />
-          <button onClick={generate} className="tech-button-primary">生成日报</button>
-          <button onClick={() => save()} className="tech-button-dark">保存日报</button>
-          <button type="button" onClick={exportPdf} className="tech-button-dark">导出 PDF</button>
         </div>
       </div>
       {message ? <div className="no-print tech-panel-soft mb-4 px-4 py-3 text-sm text-slate-200">{message}</div> : null}
       <div className="no-print mb-3 flex flex-wrap items-center gap-2">
+        <button type="button" onClick={generate} className="tech-button-primary px-3">生成日报</button>
+        <button type="button" onClick={() => save()} className="tech-button-dark px-3">保存日报</button>
         <select className="tech-input" value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="draft">草稿</option>
           <option value="reviewed">已审核</option>
@@ -319,9 +318,10 @@ export default function DailyPage() {
 
 function ReportPreview({ content }: { content: string }) {
   const cleanedContent = cleanDailyContent(content);
+  const lines = cleanedContent.split("\n");
   return (
     <div className="space-y-2 text-sm leading-7 text-slate-200">
-      {cleanedContent.split("\n").map((line, index) => {
+      {lines.map((line, index) => {
         const text = line.trim();
         if (!text) return <div key={index} className="h-2" />;
         if (text.startsWith("# ")) {
@@ -331,15 +331,25 @@ function ReportPreview({ content }: { content: string }) {
           return <h3 key={index} className="mt-5 border-l-2 border-telecom pl-3 text-base font-semibold text-cyan">{text.replace(/^##\s+/, "")}</h3>;
         }
         if (text.startsWith("- ")) {
-          return <p key={index} className="rounded border border-line bg-white/[0.03] px-3 py-2 text-slate-100">{text.replace(/^- /, "")}</p>;
+          const title = text.replace(/^- /, "");
+          const articleUrl = findFollowingArticleUrl(lines, index);
+          return (
+            <p key={index} className="rounded border border-line bg-white/[0.03] px-3 py-2 text-slate-100">
+              {articleUrl ? (
+                <a className="tech-link font-medium text-slate-100" href={articleUrl}>
+                  {title}
+                </a>
+              ) : title}
+            </p>
+          );
         }
         if (text.startsWith("原文：")) {
           const match = text.match(/^原文：\[(.*?)\]\((.*?)\)$/);
           return match ? (
             <p key={index} className="-mt-1 ml-3 border-l border-telecom/50 pl-3 text-xs leading-6">
               原文：
-              <a className="screen-link tech-link" href={match[2]} target="_blank" rel="noreferrer">{match[1]}</a>
-              <a className="print-link" href={match[2]} target="_blank" rel="noreferrer">{match[2]}</a>
+              <a className="screen-link tech-link" href={match[2]}>{match[1]}</a>
+              <a className="print-link" href={match[2]}>点击/复制原文：{match[2]}</a>
             </p>
           ) : <p key={index} className="-mt-1 ml-3 border-l border-telecom/50 pl-3 text-xs leading-6 text-slate-300">{text}</p>;
         }
@@ -353,6 +363,17 @@ function ReportPreview({ content }: { content: string }) {
       })}
     </div>
   );
+}
+
+function findFollowingArticleUrl(lines: string[], titleLineIndex: number) {
+  for (let index = titleLineIndex + 1; index < lines.length; index += 1) {
+    const text = lines[index].trim();
+    if (!text) continue;
+    if (text.startsWith("- ") || text.startsWith("## ")) return "";
+    const match = text.match(/^原文：\[[^\]]+\]\((https?:\/\/[^)]+)\)$/);
+    if (match) return match[1];
+  }
+  return "";
 }
 
 function cleanDailyContent(value: string) {
